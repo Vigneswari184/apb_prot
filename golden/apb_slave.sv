@@ -1,0 +1,45 @@
+module apb_slave #(
+    parameter ADDR_WIDTH = 8,
+    parameter DATA_WIDTH = 32,
+    parameter REG_NUM = 4       // Number of registers
+)(
+    input  wire                  PCLK,
+    input  wire                  PRESET_n,
+    input  wire [ADDR_WIDTH-1:0] PADDR,
+    input  wire [DATA_WIDTH-1:0] PWDATA,
+    input  wire                  PWRITE,
+    input  wire                  PSELx,
+    input  wire                  PENABLE,
+    output reg  [DATA_WIDTH-1:0] PRDATA,
+    output reg                   PREADY,
+    output reg                   PSLVERR
+);
+
+reg [DATA_WIDTH-1:0] regfile [0:REG_NUM-1];   // Register array
+
+integer i;
+
+// Reset
+always @(posedge PCLK or posedge PRESET_n) begin
+    if (PRESET_n) begin
+        PREADY  <= 1;
+        PSLVERR <= 0;
+        PRDATA  <= 0;
+        for(i=0; i<REG_NUM; i=i+1)
+            regfile[i] <= 0;
+    end else begin
+        PREADY  <= 1;     // Always ready for this simple example
+        PSLVERR <= 0;
+        
+        if(PSELx && PENABLE) begin
+            if(PWRITE) begin
+                // Word-aligned addressing
+                regfile[PADDR[ADDR_WIDTH-1:2] % REG_NUM] <= PWDATA;
+            end else begin
+                PRDATA <= regfile[PADDR[ADDR_WIDTH-1:2] % REG_NUM];
+            end
+        end
+    end
+end
+
+endmodule
